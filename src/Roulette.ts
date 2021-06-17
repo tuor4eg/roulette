@@ -10,7 +10,6 @@ class Roulette {
   gameField: Array<any>;
 
   constructor(rows: number = 4) {
-    //this.settings = new Settings();
     this.gameField = [];
     this.rows = rows;
     this.skew = new Array(this.settings.tapes.length).fill(0);
@@ -18,9 +17,21 @@ class Roulette {
     this.wins = 0;
   }
 
+  lineChecker(line: Array<number>, num: number) {
+    let counter = 0;
+
+    for (const seq of line) {
+      if (seq === num || seq === 8) counter += 1;
+      else break;
+    }
+
+    return counter;
+  }
+
   checkPayout() {
+    const payouts: Array<number> = [];
+
     this.settings.lines.forEach((line: Array<number>) => {
-      //console.log(line)
       const resultLine = line.map((num, index) => {
         const row = this.gameField[num];
         const value = row[index];
@@ -28,25 +39,40 @@ class Roulette {
         return value;
       });
 
-      let counter = 0;
-      const num = resultLine[0];
+      const firstNum = resultLine[0];
 
-      for (const seq of resultLine) {
-        if (seq === num) counter += 1;
-        else break;
-      }
+      const counterNum = this.lineChecker(resultLine, firstNum);
+      const counter8 = this.lineChecker(resultLine, 8);
 
-      const payout = this.settings.payout.get(num).prizes[counter - 1];
+      const payout = this.settings.payout.get(firstNum).prizes[counterNum - 1];
+      const payout8 =
+        counter8 > 0 ? this.settings.payout.get(8).prizes[counter8 - 1] : 0;
 
-      //console.log(checker, payout)
+      const reverseLine = resultLine.reverse();
+      const firstNumRev = reverseLine[0];
 
-      if (payout && payout > 0) {
-        console.log(line);
-        console.log(this.gameField);
-        console.log(counter, payout);
-        this.wins += 1;
+      const counterNumRev = this.lineChecker(reverseLine, firstNumRev);
+      const counter8rev = this.lineChecker(reverseLine, 8);
+
+      const payoutRev =
+        this.settings.payout.get(firstNumRev).prizes[counterNumRev - 1];
+      const payout8rev =
+        counter8rev > 0
+          ? this.settings.payout.get(8).prizes[counter8rev - 1]
+          : 0;
+
+      const maxPayout = [payout, payout8, payoutRev, payout8rev].sort()[3];
+
+      if (maxPayout > 0) {
+        payouts.push(maxPayout);
       }
     });
+
+    if (payouts.length > 0) {
+      const maxLinePayout = payouts.sort()[payouts.length - 1];
+
+      if (maxLinePayout > 0) this.wins += 1;
+    }
   }
 
   turn() {
@@ -62,7 +88,20 @@ class Roulette {
     this.turns += 1;
   }
 
+  checkLines() {
+    return this.settings.lines.every((line: Array<number>) =>
+      line.every((item: number) => item <= this.rows - 1)
+    );
+  }
+
   start() {
+    if (!this.checkLines()) {
+      console.log(`Размер поля слишком мал!`);
+      return;
+    }
+
+    console.log(`Игра началась`);
+
     const tapeLength = this.settings.tapes[0].length - this.rows;
     const fieldWidth = this.skew.length;
 
@@ -70,7 +109,7 @@ class Roulette {
 
     while (this.skew[fieldWidth - 1] <= tapeLength) {
       i++;
-      //console.log(this.skew);
+
       this.turn();
       this.checkPayout();
 
@@ -85,7 +124,27 @@ class Roulette {
       }
     }
 
-    console.log(this.turns, this.wins);
+    console.log(`Игра завершена\n`);
+  }
+
+  result() {
+    if (this.turns === 0) {
+      console.log("Сперва начните игру!");
+    }
+    else {
+      console.log(`Всего комбинаций: ${this.turns}`);
+      console.log(`Выигрышных комбинаций: ${this.wins}`);
+      console.log(`Проигрышных комбинаций: ${this.turns - this.wins}`);
+    }
+
+    return [this.turns, this.wins];
+  }
+
+  reset() {
+    this.gameField = [];
+    this.skew = new Array(this.settings.tapes.length).fill(0);
+    this.turns = 0;
+    this.wins = 0;
   }
 }
 
